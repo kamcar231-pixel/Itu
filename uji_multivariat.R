@@ -9,7 +9,7 @@ alpha <- 0.05
 
 # Jika Excel:
 library(readxl)
-data <- read_excel(data)
+data <- "......"
 
 # Jika CSV, gunakan ini sebagai gantinya:
 # data <- read.csv(data)
