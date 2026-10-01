@@ -1,90 +1,167 @@
 # ============================================================
-# TEMPLATE LENGKAP UJI MULTIVARIAT - BERDASARKAN PDF
+# TEMPLATE LENGKAP UJI MULTIVARIAT
+# ============================================================
+# Alpha = 0.05
+#
+# Uji:
+# 1. Mardia
+# 2. Henze-Zirkler
+# 3. Mahalanobis Distance + Chi-Square
+# 4. Box's M
+# 5. Hotelling T2 One Sample
+# 6. Hotelling T2 Two Sample
+# 7. MANOVA
+# 8. Wilks Lambda
+# 9. Pillai Trace
+# 10. Hotelling-Lawley Trace
+# 11. Roy's Largest Root
+# 12. ANOVA Univariate
+# 13. Two-Way MANOVA
 # ============================================================
 
-# -------------------- 1. INPUT DATA -------------------------
 
-#data <- "......"       # GANTI dengan lokasi file
-#alpha <- 0.05
+# ============================================================
+# 1. INPUT DATA
+# ============================================================
 
-# Jika Excel:
-library(readxl)
-#data <- "......"
+# Masukkan data sendiri sebelum menjalankan bagian analisis.
+#
+# Excel:
+# data <- readxl::read_excel("data.xlsx")
+#
+# CSV:
+# data <- read.csv("data.csv")
 
-# Jika CSV, gunakan ini sebagai gantinya:
-# data <- read.csv(data)
-
-View(data)
-names(data)
+alpha <- 0.05
 
 
 # ============================================================
-# 2. TENTUKAN VARIABEL
+# 2. PENGATURAN VARIABEL
 # ============================================================
 
-# GANTI sesuai nama kolom pada data
+# GANTI sesuai nama variabel pada data
+
 variabel <- c("X1", "X2", "X3")
 
-# GANTI sesuai nama kolom kelompok
+# GANTI sesuai nama variabel kelompok
+
 kelompok <- "Kelompok"
 
+
+# ============================================================
+# 3. PACKAGE
+# ============================================================
+
+packages <- c(
+  "MVN",
+  "biotools",
+  "ICSNP",
+  "Hotelling"
+)
+
+for (p in packages) {
+  if (!requireNamespace(p, quietly = TRUE)) {
+    install.packages(p)
+  }
+}
+
+library(MVN)
+library(biotools)
+library(ICSNP)
+library(Hotelling)
+
+
+# ============================================================
+# 4. DATA
+# ============================================================
+
 X <- data[, variabel]
+
 G <- as.factor(data[[kelompok]])
 
 cat("\n====================================================")
-cat("\nDATA DAN VARIABEL")
+cat("\nDATA")
 cat("\n====================================================\n")
+
 print(head(data))
 
+cat("\nVariabel yang digunakan:\n")
+print(variabel)
+
+cat("\nKelompok:\n")
+print(levels(G))
+
 
 # ============================================================
-# FUNGSI KEPUTUSAN
+# 5. FUNGSI KEPUTUSAN
 # ============================================================
 
-keputusan <- function(p_value, alpha = 0.05,
-                      kesimpulan_tolak = "",
-                      kesimpulan_gagal = "") {
+keputusan <- function(
+    p_value,
+    alpha = 0.05,
+    h0_tolak = "",
+    h0_gagal = ""
+) {
 
-  cat("\nP-value =", p_value)
-  cat("\nAlpha    =", alpha)
+  cat("\nP-value :", p_value)
+  cat("\nAlpha   :", alpha)
 
   if (p_value < alpha) {
 
-    cat("\nKeputusan : TOLAK H0")
-    if (kesimpulan_tolak != "")
-      cat("\nKesimpulan:", kesimpulan_tolak)
+    cat("\nKeputusan : TOLAK H0\n")
+
+    if (h0_tolak != "") {
+      cat("Kesimpulan:", h0_tolak, "\n")
+    }
 
   } else {
 
-    cat("\nKeputusan : GAGAL TOLAK H0")
-    if (kesimpulan_gagal != "")
-      cat("\nKesimpulan:", kesimpulan_gagal)
-  }
+    cat("\nKeputusan : GAGAL TOLAK H0\n")
 
-  cat("\n")
+    if (h0_gagal != "") {
+      cat("Kesimpulan:", h0_gagal, "\n")
+    }
+  }
 }
 
 
 # ============================================================
-# 3. UJI NORMALITAS MULTIVARIAT
-#    Henze-Zirkler
+# 6. UJI MARDIA
 # ============================================================
 
 cat("\n\n====================================================")
-cat("\n1. UJI NORMALITAS MULTIVARIAT")
+cat("\n1. UJI NORMALITAS MULTIVARIAT - MARDIA")
 cat("\n====================================================\n")
 
-if (!require(MVN)) install.packages("MVN")
-library(MVN)
+hasil_mardia <- mvn(
+  data = X,
+  mvnTest = "mardia"
+)
 
-hasil_normal <- hz(X)
+print(hasil_mardia$multivariateNormality)
 
-print(hasil_normal)
+# Ambil p-value
+p_mardia_skew <- hasil_mardia$multivariateNormality[
+  1, "p value"
+]
 
-p_normal <- hasil_normal$p.value
+p_mardia_kurt <- hasil_mardia$multivariateNormality[
+  2, "p value"
+]
+
+cat("\n--- MARDIA SKEWNESS ---\n")
 
 keputusan(
-  p_normal,
+  p_mardia_skew,
+  alpha,
+  "Data tidak berdistribusi normal multivariat.",
+  "Data berdistribusi normal multivariat."
+)
+
+cat("\n--- MARDIA KURTOSIS ---\n")
+
+keputusan(
+  p_mardia_kurt,
   alpha,
   "Data tidak berdistribusi normal multivariat.",
   "Data berdistribusi normal multivariat."
@@ -92,40 +169,29 @@ keputusan(
 
 
 # ============================================================
-# 4. UJI NORMALITAS MULTIVARIAT PER KELOMPOK
+# 7. UJI HENZE-ZIRKLER
 # ============================================================
 
 cat("\n\n====================================================")
-cat("\n2. NORMALITAS MULTIVARIAT PER KELOMPOK")
+cat("\n2. UJI NORMALITAS MULTIVARIAT - HENZE-ZIRKLER")
 cat("\n====================================================\n")
 
-for (g in levels(G)) {
+hasil_hz <- hz(X)
 
-  cat("\n--------------------------------------------")
-  cat("\nKelompok:", g)
-  cat("\n--------------------------------------------\n")
+print(hasil_hz)
 
-  Xg <- data[G == g, variabel]
+p_hz <- hasil_hz$p.value
 
-  hasil_g <- hz(Xg)
-
-  print(hasil_g)
-
-  p_g <- hasil_g$p.value
-
-  keputusan(
-    p_g,
-    alpha,
-    paste("Kelompok", g,
-          "tidak berdistribusi normal multivariat."),
-    paste("Kelompok", g,
-          "berdistribusi normal multivariat.")
-  )
-}
+keputusan(
+  p_hz,
+  alpha,
+  "Data tidak berdistribusi normal multivariat.",
+  "Data berdistribusi normal multivariat."
+)
 
 
 # ============================================================
-# 5. MAHALANOBIS DISTANCE + CHI-SQUARE
+# 8. MAHALANOBIS DISTANCE
 # ============================================================
 
 cat("\n\n====================================================")
@@ -133,6 +199,7 @@ cat("\n3. MAHALANOBIS DISTANCE + CHI-SQUARE")
 cat("\n====================================================\n")
 
 mean_X <- colMeans(X)
+
 S <- cov(X)
 
 D2 <- mahalanobis(
@@ -141,36 +208,41 @@ D2 <- mahalanobis(
   cov = S
 )
 
+cat("\nSquared Mahalanobis Distance:\n")
+
 print(D2)
 
-p <- ncol(X)
+p_dimensi <- ncol(X)
 
 chi50 <- qchisq(
   0.50,
-  df = p
+  df = p_dimensi
 )
 
-cat("\nChi-Square 50% =", chi50)
+cat("\nChi-Square 50% :", chi50)
 
 proporsi <- mean(D2 <= chi50)
 
-cat("\nProporsi data dalam kontur 50% =", proporsi)
-cat("\nPersentase =", proporsi * 100, "%\n")
+cat("\nProporsi dalam kontur 50% :", proporsi)
+
+cat("\nPersentase :", proporsi * 100, "%\n")
 
 if (abs(proporsi - 0.50) <= 0.10) {
 
-  cat("Kesimpulan: Proporsi mendekati 50%.\n")
-  cat("Normalitas multivariat didukung berdasarkan pendekatan ini.\n")
+  cat("\nKesimpulan:")
+  cat("\nProporsi mendekati 50%.")
+  cat("\nNormalitas multivariat didukung berdasarkan pendekatan ini.\n")
 
 } else {
 
-  cat("Kesimpulan: Proporsi cukup jauh dari 50%.\n")
-  cat("Terdapat indikasi penyimpangan normalitas multivariat.\n")
+  cat("\nKesimpulan:")
+  cat("\nProporsi cukup jauh dari 50%.")
+  cat("\nTerdapat indikasi penyimpangan normalitas multivariat.\n")
 }
 
 
 # ============================================================
-# 6. CHI-SQUARE Q-Q PLOT
+# 9. CHI-SQUARE Q-Q PLOT
 # ============================================================
 
 cat("\n\n====================================================")
@@ -183,7 +255,7 @@ prob <- (1:n - 0.5) / n
 
 chi_square <- qchisq(
   prob,
-  df = p
+  df = p_dimensi
 )
 
 plot(
@@ -194,20 +266,19 @@ plot(
   main = "Chi-Square Q-Q Plot"
 )
 
-abline(0, 1)
+abline(
+  0,
+  1
+)
 
 
 # ============================================================
-# 7. UJI HOMOGENITAS MATRIKS KOVARIANS
-#    BOX'S M TEST
+# 10. BOX'S M
 # ============================================================
 
 cat("\n\n====================================================")
-cat("\n5. UJI HOMOGENITAS MATRIKS KOVARIANS")
+cat("\n5. UJI HOMOGENITAS MATRIKS KOVARIANS - BOX'S M")
 cat("\n====================================================\n")
-
-if (!require(biotools)) install.packages("biotools")
-library(biotools)
 
 hasil_box <- boxM(
   X,
@@ -227,18 +298,20 @@ keputusan(
 
 
 # ============================================================
-# 8. HOTELLING T2 - ONE SAMPLE
+# 11. HOTELLING T2 ONE SAMPLE
 # ============================================================
 
 cat("\n\n====================================================")
 cat("\n6. HOTELLING'S T2 - ONE SAMPLE")
 cat("\n====================================================\n")
 
-if (!require(ICSNP)) install.packages("ICSNP")
-library(ICSNP)
+# GANTI sesuai nilai mean hipotesis
 
-# GANTI sesuai vektor mean yang dihipotesiskan
-mu0 <- c(75, 80, 78)
+mu0 <- c(
+  75,
+  80,
+  78
+)
 
 hasil_one <- HotellingsT2(
   X,
@@ -252,25 +325,30 @@ p_one <- hasil_one$p.value
 keputusan(
   p_one,
   alpha,
-  "Terdapat perbedaan vektor rata-rata dengan mu0.",
+  "Vektor rata-rata berbeda dengan mu0.",
   "Tidak terdapat perbedaan vektor rata-rata dengan mu0."
 )
 
 
 # ============================================================
-# 9. HOTELLING T2 - TWO SAMPLE
+# 12. HOTELLING T2 TWO SAMPLE
 # ============================================================
 
 cat("\n\n====================================================")
 cat("\n7. HOTELLING'S T2 - TWO SAMPLE")
 cat("\n====================================================\n")
 
-if (!require(Hotelling)) install.packages("Hotelling")
-library(Hotelling)
+# GANTI sesuai nama kelompok
 
-# GANTI nama kelompok jika bukan A1 dan A2
-X1 <- data[G == "A1", variabel]
-X2 <- data[G == "A2", variabel]
+X1 <- data[
+  G == "A1",
+  variabel
+]
+
+X2 <- data[
+  G == "A2",
+  variabel
+]
 
 hasil_two <- hotelling.test(
   X1,
@@ -280,7 +358,6 @@ hasil_two <- hotelling.test(
 
 print(hasil_two)
 
-# P-value Hotelling
 p_two <- hasil_two$pval
 
 keputusan(
@@ -292,14 +369,13 @@ keputusan(
 
 
 # ============================================================
-# 10. MANOVA
+# 13. MANOVA
 # ============================================================
 
 cat("\n\n====================================================")
-cat("\n8. MANOVA")
+cat("\n8. MANOVA - UJI MULTIVARIAT")
 cat("\n====================================================\n")
 
-# Membuat formula otomatis
 formula_manova <- as.formula(
   paste(
     "cbind(",
@@ -318,7 +394,7 @@ print(model_manova)
 
 
 # ============================================================
-# 11. MANOVA - WILKS' LAMBDA
+# 14. WILKS' LAMBDA
 # ============================================================
 
 cat("\n\n====================================================")
@@ -332,18 +408,21 @@ hasil_wilks <- summary(
 
 print(hasil_wilks)
 
-p_wilks <- hasil_wilks$stats[1, "Pr(>F)"]
+p_wilks <- hasil_wilks$stats[
+  1,
+  "Pr(>F)"
+]
 
 keputusan(
   p_wilks,
   alpha,
-  "Terdapat perbedaan multivariat antar kelompok.",
-  "Tidak terdapat perbedaan multivariat antar kelompok."
+  "Terdapat perbedaan vektor mean antar kelompok.",
+  "Tidak terdapat perbedaan vektor mean antar kelompok."
 )
 
 
 # ============================================================
-# 12. MANOVA - PILLAI'S TRACE
+# 15. PILLAI'S TRACE
 # ============================================================
 
 cat("\n\n====================================================")
@@ -357,18 +436,21 @@ hasil_pillai <- summary(
 
 print(hasil_pillai)
 
-p_pillai <- hasil_pillai$stats[1, "Pr(>F)"]
+p_pillai <- hasil_pillai$stats[
+  1,
+  "Pr(>F)"
+]
 
 keputusan(
   p_pillai,
   alpha,
-  "Terdapat perbedaan multivariat antar kelompok.",
-  "Tidak terdapat perbedaan multivariat antar kelompok."
+  "Terdapat perbedaan vektor mean antar kelompok.",
+  "Tidak terdapat perbedaan vektor mean antar kelompok."
 )
 
 
 # ============================================================
-# 13. MANOVA - HOTELLING-LAWLEY TRACE
+# 16. HOTELLING-LAWLEY TRACE
 # ============================================================
 
 cat("\n\n====================================================")
@@ -382,18 +464,21 @@ hasil_hl <- summary(
 
 print(hasil_hl)
 
-p_hl <- hasil_hl$stats[1, "Pr(>F)"]
+p_hl <- hasil_hl$stats[
+  1,
+  "Pr(>F)"
+]
 
 keputusan(
   p_hl,
   alpha,
-  "Terdapat perbedaan multivariat antar kelompok.",
-  "Tidak terdapat perbedaan multivariat antar kelompok."
+  "Terdapat perbedaan vektor mean antar kelompok.",
+  "Tidak terdapat perbedaan vektor mean antar kelompok."
 )
 
 
 # ============================================================
-# 14. MANOVA - ROY'S LARGEST ROOT
+# 17. ROY'S LARGEST ROOT
 # ============================================================
 
 cat("\n\n====================================================")
@@ -407,44 +492,49 @@ hasil_roy <- summary(
 
 print(hasil_roy)
 
-p_roy <- hasil_roy$stats[1, "Pr(>F)"]
+p_roy <- hasil_roy$stats[
+  1,
+  "Pr(>F)"
+]
 
 keputusan(
   p_roy,
   alpha,
-  "Terdapat perbedaan multivariat antar kelompok.",
-  "Tidak terdapat perbedaan multivariat antar kelompok."
+  "Terdapat perbedaan vektor mean antar kelompok.",
+  "Tidak terdapat perbedaan vektor mean antar kelompok."
 )
 
 
 # ============================================================
-# 15. ANOVA UNIVARIAT SETELAH MANOVA
+# 18. UJI UNIVARIAT / ANOVA
 # ============================================================
 
 cat("\n\n====================================================")
-cat("\n13. ANOVA UNIVARIAT LANJUTAN")
+cat("\n13. UJI UNIVARIAT - ANOVA")
 cat("\n====================================================\n")
 
-hasil_aov <- summary.aov(model_manova)
+hasil_aov <- summary.aov(
+  model_manova
+)
 
 print(hasil_aov)
 
 
 # ============================================================
-# 16. TWO-WAY MANOVA
+# 19. TWO-WAY MANOVA
 # ============================================================
 
 cat("\n\n====================================================")
 cat("\n14. TWO-WAY MANOVA")
 cat("\n====================================================\n")
 
-# GANTI nama Faktor1 dan Faktor2
-# Jika tidak membutuhkan Two-Way MANOVA, bagian ini bisa dilewati.
-
-if ("Faktor1" %in% names(data) &&
-    "Faktor2" %in% names(data)) {
+if (
+  "Faktor1" %in% names(data) &&
+  "Faktor2" %in% names(data)
+) {
 
   data$Faktor1 <- as.factor(data$Faktor1)
+
   data$Faktor2 <- as.factor(data$Faktor2)
 
   formula_two_way <- as.formula(
@@ -460,14 +550,11 @@ if ("Faktor1" %in% names(data) &&
     data = data
   )
 
-  print(model_two_way)
-
-
   # ----------------------------------------------------------
-  # 16a. TWO-WAY MANOVA - WILKS
+  # WILKS
   # ----------------------------------------------------------
 
-  cat("\n\n--- TWO-WAY MANOVA: WILKS ---\n")
+  cat("\n--- TWO-WAY MANOVA: WILKS ---\n")
 
   hasil_two_wilks <- summary(
     model_two_way,
@@ -476,10 +563,15 @@ if ("Faktor1" %in% names(data) &&
 
   print(hasil_two_wilks)
 
-  p_two_wilks <- hasil_two_wilks$stats[, "Pr(>F)"]
+  p_two_wilks <- hasil_two_wilks$stats[
+    ,
+    "Pr(>F)"
+  ]
 
-  hasil_keputusan <- data.frame(
-    Efek = rownames(hasil_two_wilks$stats),
+  keputusan_two_wilks <- data.frame(
+    Efek = rownames(
+      hasil_two_wilks$stats
+    ),
     P_Value = p_two_wilks,
     Keputusan = ifelse(
       p_two_wilks < alpha,
@@ -488,14 +580,16 @@ if ("Faktor1" %in% names(data) &&
     )
   )
 
-  print(hasil_keputusan)
+  print(
+    keputusan_two_wilks
+  )
 
 
   # ----------------------------------------------------------
-  # 16b. TWO-WAY MANOVA - PILLAI
+  # PILLAI
   # ----------------------------------------------------------
 
-  cat("\n\n--- TWO-WAY MANOVA: PILLAI ---\n")
+  cat("\n--- TWO-WAY MANOVA: PILLAI ---\n")
 
   hasil_two_pillai <- summary(
     model_two_way,
@@ -504,10 +598,15 @@ if ("Faktor1" %in% names(data) &&
 
   print(hasil_two_pillai)
 
-  p_two_pillai <- hasil_two_pillai$stats[, "Pr(>F)"]
+  p_two_pillai <- hasil_two_pillai$stats[
+    ,
+    "Pr(>F)"
+  ]
 
-  hasil_keputusan_pillai <- data.frame(
-    Efek = rownames(hasil_two_pillai$stats),
+  keputusan_two_pillai <- data.frame(
+    Efek = rownames(
+      hasil_two_pillai$stats
+    ),
     P_Value = p_two_pillai,
     Keputusan = ifelse(
       p_two_pillai < alpha,
@@ -516,67 +615,76 @@ if ("Faktor1" %in% names(data) &&
     )
   )
 
-  print(hasil_keputusan_pillai)
+  print(
+    keputusan_two_pillai
+  )
 
 
   # ----------------------------------------------------------
-  # 16c. ANOVA LANJUTAN TWO-WAY MANOVA
+  # ANOVA UNIVARIAT
   # ----------------------------------------------------------
 
-  cat("\n\n--- ANOVA LANJUTAN TWO-WAY MANOVA ---\n")
+  cat("\n--- ANOVA UNIVARIAT TWO-WAY MANOVA ---\n")
 
-  print(summary.aov(model_two_way))
+  print(
+    summary.aov(model_two_way)
+  )
+
 
 } else {
 
-  cat("\nKolom Faktor1/Faktor2 tidak ditemukan.")
+  cat("\nKolom Faktor1 dan Faktor2 tidak ditemukan.")
   cat("\nTwo-Way MANOVA dilewati.\n")
 }
 
 
 # ============================================================
-# 17. RINGKASAN ATURAN KEPUTUSAN
+# 20. RINGKASAN H0
 # ============================================================
 
 cat("\n\n====================================================")
-cat("\nRINGKASAN ATURAN KEPUTUSAN")
+cat("\nRINGKASAN HIPOTESIS")
 cat("\n====================================================\n")
 
 cat("
+1. MARDIA
+H0 : Data berdistribusi normal multivariat.
+H1 : Data tidak berdistribusi normal multivariat.
+
+2. HENZE-ZIRKLER
+H0 : Data berdistribusi normal multivariat.
+H1 : Data tidak berdistribusi normal multivariat.
+
+3. BOX'S M
+H0 : Matriks kovarians homogen.
+H1 : Minimal terdapat satu matriks kovarians yang berbeda.
+
+4. HOTELLING T2 ONE SAMPLE
+H0 : mu = mu0.
+H1 : mu != mu0.
+
+5. HOTELLING T2 TWO SAMPLE
+H0 : mu1 = mu2.
+H1 : mu1 != mu2.
+
+6. MANOVA
+H0 : Tidak terdapat perbedaan vektor mean antar kelompok.
+H1 : Terdapat perbedaan vektor mean antar kelompok.
+
+7. TWO-WAY MANOVA
+H0 : Tidak terdapat efek Faktor 1.
+H0 : Tidak terdapat efek Faktor 2.
+H0 : Tidak terdapat efek interaksi Faktor 1 x Faktor 2.
+
+ATURAN KEPUTUSAN:
+
 Jika p-value < 0.05
--> TOLAK H0
+=> TOLAK H0
 
 Jika p-value >= 0.05
--> GAGAL TOLAK H0
-
-----------------------------------------------------
-
-NORMALITAS:
-H0 = Data berdistribusi normal multivariat
-
-BOX'S M:
-H0 = Matriks kovarians homogen
-
-HOTELLING T2 ONE SAMPLE:
-H0 = μ = μ0
-
-HOTELLING T2 TWO SAMPLE:
-H0 = μ1 = μ2
-
-MANOVA:
-H0 = Tidak terdapat perbedaan vektor mean antar kelompok
-
-TWO-WAY MANOVA:
-
-Faktor 1:
-H0 = Tidak terdapat efek Faktor 1
-
-Faktor 2:
-H0 = Tidak terdapat efek Faktor 2
-
-Interaksi:
-H0 = Tidak terdapat efek interaksi Faktor 1 × Faktor 2
+=> GAGAL TOLAK H0
 ")
+
 
 cat("\n====================================================")
 cat("\nSELESAI")
