@@ -4,12 +4,12 @@
 
 # -------------------- 1. INPUT DATA -------------------------
 
-data <- "......"       # GANTI dengan lokasi file
-alpha <- 0.05
+#data <- "......"       # GANTI dengan lokasi file
+#alpha <- 0.05
 
 # Jika Excel:
 library(readxl)
-data <- "......"
+#data <- "......"
 
 # Jika CSV, gunakan ini sebagai gantinya:
 # data <- read.csv(data)
