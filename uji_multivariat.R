@@ -296,6 +296,59 @@ keputusan(
   "Matriks kovarians homogen."
 )
 
+# ============================================================
+# 11. UJI LEVENE
+# ============================================================
+
+cat("\n\n====================================================")
+cat("\n6. UJI HOMOGENITAS VARIANS - LEVENE")
+cat("\n====================================================\n")
+
+# Install package jika belum ada
+if (!requireNamespace("car", quietly = TRUE)) {
+  install.packages("car")
+}
+
+library(car)
+
+# Jalankan Levene untuk setiap variabel
+for (v in variabel) {
+
+  cat("\n----------------------------------------")
+  cat("\nVariabel :", v)
+  cat("\n----------------------------------------\n")
+
+  formula_levene <- as.formula(
+    paste(v, "~", kelompok)
+  )
+
+  hasil_levene <- leveneTest(
+    formula_levene,
+    data = data,
+    center = median
+  )
+
+  print(hasil_levene)
+
+  # Ambil p-value
+  p_levene <- hasil_levene[1, "Pr(>F)"]
+
+  cat("\nP-value :", p_levene)
+  cat("\nAlpha   :", alpha)
+
+  if (p_levene < alpha) {
+
+    cat("\nKeputusan : TOLAK H0")
+    cat("\nKesimpulan : Varians", v,
+        "antar kelompok TIDAK HOMOGEN.\n")
+
+  } else {
+
+    cat("\nKeputusan : GAGAL TOLAK H0")
+    cat("\nKesimpulan : Varians", v,
+        "antar kelompok HOMOGEN.\n")
+  }
+}
 
 # ============================================================
 # 11. HOTELLING T2 ONE SAMPLE
